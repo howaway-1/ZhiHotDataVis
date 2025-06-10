@@ -1,0 +1,973 @@
+{% extends "base.html" %}
+
+{% block title %}舆情分析 - 知乎热榜数据分析平台{% endblock %}
+
+{% block page_title %}舆情分析{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-gradient-primary-to-secondary text-white">
+                    <h5 class="card-title mb-0"><i class="fas fa-chart-pie me-2"></i>舆情分析概览</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">本页面基于SnowNLP对知乎热榜话题进行情感分析，通过情感分数判断舆论倾向，帮助您了解当前公众情绪的总体趋势。</p>
+                    <button id="refresh-sentiment-data" class="btn btn-primary mt-2">
+                        <i class="fas fa-sync-alt me-1"></i> 刷新舆情分析数据
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 card-chart shadow-sm">
+                <div class="card-header bg-gradient-success-to-info text-white">
+                    <h5 class="card-title mb-0"><i class="fas fa-chart-pie me-2"></i>情感分布概览</h5>
+                </div>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <div id="sentimentPieChart" style="width: 100%; height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8 col-md-6 mb-4">
+            <div class="card h-100 card-chart shadow-sm">
+                <div class="card-header bg-gradient-info-to-primary text-white">
+                    <h5 class="card-title mb-0"><i class="fas fa-chart-scatter me-2"></i>热榜话题情感分数</h5>
+                </div>
+                <div class="card-body">
+                    <div id="sentimentScatterChart" style="height: 440px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 情感词汇统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-gradient-primary-to-dark text-white">
+                    <h5 class="card-title mb-0"><i class="fas fa-chart-bar me-2"></i>情感词汇统计</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-4 mb-md-0">
+                            <div class="sentiment-stats-card shadow-hover">
+                                <div class="sentiment-stats-header bg-success-subtle">
+                                    <div class="icon-box bg-success text-white">
+                                        <i class="fas fa-smile-beam"></i>
+                                    </div>
+                                    <h5>积极情绪词汇</h5>
+                                </div>
+                                <div class="sentiment-stats-body">
+                                    <div id="positiveWordsChart" style="height: 280px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-4 mb-md-0">
+                            <div class="sentiment-stats-card shadow-hover">
+                                <div class="sentiment-stats-header bg-warning-subtle">
+                                    <div class="icon-box bg-warning text-white">
+                                        <i class="fas fa-meh"></i>
+                                    </div>
+                                    <h5>中性情绪词汇</h5>
+                                </div>
+                                <div class="sentiment-stats-body">
+                                    <div id="neutralWordsChart" style="height: 280px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="sentiment-stats-card shadow-hover">
+                                <div class="sentiment-stats-header bg-danger-subtle">
+                                    <div class="icon-box bg-danger text-white">
+                                        <i class="fas fa-frown"></i>
+                                    </div>
+                                    <h5>消极情绪词汇</h5>
+                                </div>
+                                <div class="sentiment-stats-body">
+                                    <div id="negativeWordsChart" style="height: 280px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-gradient-dark-to-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0"><i class="fas fa-list-alt me-2"></i>热榜话题情感分析详情</h5>
+                    <div class="card-actions">
+                        <button class="btn btn-sm btn-light" id="exportSentimentData">
+                            <i class="fas fa-download me-1"></i> 导出数据
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped" id="sentimentTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>标题</th>
+                                    <th>情感分数</th>
+                                    <th>情感倾向</th>
+                                    <th>积极词数</th>
+                                    <th>中性词数</th>
+                                    <th>消极词数</th>
+                                    <th>关键词</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 数据将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+/* 渐变背景样式 */
+.bg-gradient-primary-to-secondary {
+    background: linear-gradient(45deg, #3a7bd5, #00d2ff);
+}
+.bg-gradient-success-to-info {
+    background: linear-gradient(45deg, #4caf50, #26c6da);
+}
+.bg-gradient-info-to-primary {
+    background: linear-gradient(45deg, #00c6ff, #0072ff);
+}
+.bg-gradient-primary-to-dark {
+    background: linear-gradient(45deg, #4e54c8, #8f94fb);
+}
+.bg-gradient-dark-to-secondary {
+    background: linear-gradient(45deg, #414345, #232526);
+}
+
+/* 情感统计卡片样式 */
+.sentiment-stats-card {
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    height: 100%;
+    transition: all 0.3s ease;
+}
+.sentiment-stats-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+.sentiment-stats-header {
+    padding: 20px;
+    position: relative;
+    text-align: center;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+.sentiment-stats-header h5 {
+    font-weight: 600;
+    margin-bottom: 0;
+    margin-top: 50px;
+}
+.sentiment-stats-body {
+    padding: 15px;
+}
+.icon-box {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 28px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* 背景色辅助类 */
+.bg-success-subtle {
+    background-color: rgba(76, 175, 80, 0.1);
+}
+.bg-warning-subtle {
+    background-color: rgba(255, 152, 0, 0.1);
+}
+.bg-danger-subtle {
+    background-color: rgba(244, 67, 54, 0.1);
+}
+
+/* 卡片阴影效果 */
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+.shadow-hover:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* 表格样式 */
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* 饼图容器样式 */
+#sentimentPieChart {
+    width: 100%;
+    height: 400px;
+    padding: 10px;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // 显示加载中提示
+    function showLoading() {
+        $(".card-body").append('<div class="text-center p-4 loading-indicator"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">正在加载数据...</p></div>');
+    }
+
+    // 隐藏加载中提示
+    function hideLoading() {
+        $(".loading-indicator").remove();
+    }
+
+    // 显示错误提示
+    function showError(message) {
+        const alertHtml = `
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <div class="alert-icon"><i class="fa-solid fa-circle-exclamation"></i></div>
+                <div class="alert-content">${message}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        $(".content-wrapper").prepend(alertHtml);
+    }
+
+    // 显示成功提示
+    function showSuccess(message) {
+        const alertHtml = `
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <div class="alert-icon"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="alert-content">${message}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        $(".content-wrapper").prepend(alertHtml);
+    }
+
+    // 刷新按钮点击事件
+    $("#refresh-sentiment-data").click(function() {
+        const $refreshBtn = $(this);
+        const originalText = $refreshBtn.html();
+        $refreshBtn.html('<i class="fas fa-spinner fa-spin"></i> 正在刷新...');
+        $refreshBtn.prop('disabled', true);
+
+        // 清空所有图表
+        $("#sentimentPieChart").empty();
+        $("#sentimentScatterChart").empty();
+        $("#positiveWordsChart").empty();
+        $("#neutralWordsChart").empty();
+        $("#negativeWordsChart").empty();
+        $("#sentimentTable tbody").empty();
+
+        // 发送请求刷新数据
+        $.ajax({
+            url: '/analysis/api/refresh_sentiment_data',
+            type: 'POST',
+            dataType: 'json',
+            success: function(response) {
+                $refreshBtn.html(originalText);
+                $refreshBtn.prop('disabled', false);
+
+                if (response.status === 'success') {
+                    showSuccess(response.message || '舆情分析数据已刷新');
+
+                    // 加载热榜文章数据
+                    $.ajax({
+                        url: '/api/hot_articles',
+                        type: 'GET',
+                        dataType: 'json',
+                        success: function(articleResponse) {
+                            if (articleResponse.status === 'success') {
+                                const articles = articleResponse.data;
+                                const combinedData = mergeSentimentData(articles, response.data);
+
+                                if (combinedData.length > 0) {
+                                    renderSentimentAnalysis(combinedData);
+                                } else {
+                                    showError('没有找到情感分析数据，请尝试刷新页面');
+                                }
+                            } else {
+                                showError('获取热榜数据失败: ' + (articleResponse.message || '未知错误'));
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            showError('获取热榜数据失败: ' + error);
+                        }
+                    });
+                } else {
+                    showError('刷新舆情分析数据失败: ' + (response.message || '未知错误'));
+                }
+            },
+            error: function(xhr, status, error) {
+                $refreshBtn.html(originalText);
+                $refreshBtn.prop('disabled', false);
+                showError('刷新舆情分析数据失败: ' + error);
+            }
+        });
+    });
+
+    // 导出数据按钮事件
+    $("#exportSentimentData").click(function() {
+        // 获取表格数据
+        const tableData = [];
+        const headers = [];
+
+        // 获取表头
+        $('#sentimentTable thead tr th').each(function() {
+            headers.push($(this).text());
+        });
+
+        // 获取表格数据
+        $('#sentimentTable tbody tr').each(function() {
+            const row = {};
+            $(this).find('td').each(function(index) {
+                row[headers[index]] = $(this).text();
+            });
+            tableData.push(row);
+        });
+
+        // 转换为CSV
+        let csvContent = "data:text/csv;charset=utf-8,";
+
+        // 添加表头
+        csvContent += headers.join(",") + "\r\n";
+
+        // 添加数据行
+        tableData.forEach(function(row) {
+            const rowData = headers.map(header => {
+                return `"${row[header] || ""}"`;
+            });
+            csvContent += rowData.join(",") + "\r\n";
+        });
+
+        // 创建下载链接并触发下载
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "知乎热榜情感分析数据.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
+    // 为每个图表容器添加加载提示
+    showLoading();
+
+    // 加载热榜文章数据
+    $.ajax({
+        url: '/api/hot_articles',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success') {
+                const articles = response.data;
+                console.log('获取到热榜文章数据:', articles.length);
+
+                // 加载情感分析数据
+                $.ajax({
+                    url: '/analysis/api/sentiment_data',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(sentimentResponse) {
+                        hideLoading();
+                        if (sentimentResponse.status === 'success') {
+                            console.log('获取到情感分析数据:', sentimentResponse.data.length);
+                            // 合并文章数据和情感分析数据
+                            const sentimentData = sentimentResponse.data;
+                            const combinedData = mergeSentimentData(articles, sentimentData);
+
+                            if (combinedData.length > 0) {
+                                renderSentimentAnalysis(combinedData);
+                            } else {
+                                showError('没有找到情感分析数据，请尝试刷新页面');
+                            }
+                        } else {
+                            showError('获取情感分析数据失败: ' + (sentimentResponse.message || '未知错误'));
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        hideLoading();
+                        console.error('获取情感分析数据失败:', xhr.status, error);
+                        showError('获取情感分析数据失败: ' + error);
+                    }
+                });
+            } else {
+                hideLoading();
+                showError('获取热榜数据失败: ' + (response.message || '未知错误'));
+            }
+        },
+        error: function(xhr, status, error) {
+            hideLoading();
+            console.error('获取热榜数据失败:', xhr.status, error);
+            showError('获取热榜数据失败: ' + error);
+        }
+    });
+
+    function mergeSentimentData(articles, sentimentData) {
+        // 创建文章ID到文章对象的映射
+        const articleMap = {};
+        articles.forEach(article => {
+            articleMap[article.id] = article;
+        });
+
+        // 合并数据
+        return sentimentData.map(sentiment => {
+            const article = articleMap[sentiment.article_id] || {};
+            return {
+                ...article,
+                sentiment_score: sentiment.sentiment_score,
+                positive_count: sentiment.positive_count,
+                negative_count: sentiment.negative_count,
+                neutral_count: sentiment.neutral_count,
+                keywords: sentiment.keywords
+            };
+        });
+    }
+
+    function renderSentimentAnalysis(data) {
+        // 渲染情感分布饼图
+        renderSentimentPieChart(data);
+
+        // 渲染情感散点图
+        renderSentimentScatterChart(data);
+
+        // 渲染情感词汇统计图
+        renderSentimentWordsCharts(data);
+
+        // 渲染情感分析详情表格
+        renderSentimentTable(data);
+    }
+
+    function renderSentimentPieChart(data) {
+        // 统计积极、中性和消极的文章数量
+        let positive = 0, neutral = 0, negative = 0;
+
+        data.forEach(item => {
+            if (item.sentiment_score >= 0.7) {
+                positive++;
+            } else if (item.sentiment_score <= 0.3) {
+                negative++;
+            } else {
+                neutral++;
+            }
+        });
+
+        // 创建情感分布饼图
+        const sentimentPieChart = echarts.init(document.getElementById('sentimentPieChart'));
+
+        const option = {
+            tooltip: {
+                trigger: 'item',
+                formatter: '{a} <br/>{b}: {c} ({d}%)',
+                backgroundColor: 'rgba(50,50,50,0.85)',
+                borderColor: 'rgba(255,255,255,0.2)',
+                borderWidth: 1,
+                padding: [10, 15],
+                textStyle: {
+                    fontSize: 14,
+                    color: '#fff'
+                }
+            },
+            legend: {
+                orient: 'horizontal',
+                bottom: '5%',
+                left: 'center',
+                data: ['积极', '中性', '消极'],
+                textStyle: {
+                    fontSize: 14
+                },
+                itemWidth: 12,
+                itemHeight: 12
+            },
+            series: [
+                {
+                    name: '情感分布',
+                    type: 'pie',
+                    radius: ['30%', '60%'],
+                    center: ['50%', '46%'],
+                    avoidLabelOverlap: true,
+                    stillShowZeroSum: false,
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: '#fff',
+                        borderWidth: 2,
+                        shadowBlur: 10,
+                        shadowColor: 'rgba(0, 0, 0, 0.2)'
+                    },
+                    label: {
+                        show: true,
+                        formatter: function(params) {
+                            // 完整显示标签文本，不使用省略号
+                            return `${params.percent.toFixed(0)}%`;
+                        },
+                        fontSize: 14,
+                        fontWeight: 'bold',
+                        backgroundColor: 'rgba(255,255,255,0.7)',
+                        borderRadius: 4,
+                        padding: [4, 8],
+                        color: '#333',
+                        width: 150,
+                        overflow: 'break',
+                        lineHeight: 20
+                    },
+                    labelLine: {
+                        show: true,
+                        length: 15,
+                        length2: 40,
+                        smooth: true,
+                        lineStyle: {
+                            width: 1.5
+                        }
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            fontSize: 14,
+                            fontWeight: 'bold'
+                        },
+                        itemStyle: {
+                            shadowBlur: 20,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    },
+                    data: [
+                        {
+                            value: positive,
+                            name: '积极',
+                            itemStyle: {
+                                color: {
+                                    type: 'linear',
+                                    x: 0,
+                                    y: 0,
+                                    x2: 0,
+                                    y2: 1,
+                                    colorStops: [{
+                                        offset: 0, color: '#42b983'
+                                    }, {
+                                        offset: 1, color: '#4caf50'
+                                    }]
+                                }
+                            }
+                        },
+                        {
+                            value: neutral,
+                            name: '中性',
+                            itemStyle: {
+                                color: {
+                                    type: 'linear',
+                                    x: 0,
+                                    y: 0,
+                                    x2: 0,
+                                    y2: 1,
+                                    colorStops: [{
+                                        offset: 0, color: '#ffeb3b'
+                                    }, {
+                                        offset: 1, color: '#ff9800'
+                                    }]
+                                }
+                            }
+                        },
+                        {
+                            value: negative,
+                            name: '消极',
+                            itemStyle: {
+                                color: {
+                                    type: 'linear',
+                                    x: 0,
+                                    y: 0,
+                                    x2: 0,
+                                    y2: 1,
+                                    colorStops: [{
+                                        offset: 0, color: '#ff5252'
+                                    }, {
+                                        offset: 1, color: '#f44336'
+                                    }]
+                                }
+                            }
+                        }
+                    ],
+                    animationType: 'scale',
+                    animationEasing: 'elasticOut',
+                    animationDelay: function (idx) {
+                        return Math.random() * 300;
+                    }
+                }
+            ]
+        };
+
+        sentimentPieChart.setOption(option);
+
+        // 自适应窗口大小变化
+        window.addEventListener('resize', function() {
+            sentimentPieChart.resize();
+        });
+    }
+
+    function renderSentimentScatterChart(data) {
+        // 提取情感分数和排名数据
+        const sentimentData = data.map((item, index) => {
+            return [index + 1, item.sentiment_score, item.title];
+        });
+
+        // 创建情感散点图
+        const sentimentScatterChart = echarts.init(document.getElementById('sentimentScatterChart'));
+
+        const option = {
+            tooltip: {
+                trigger: 'item',
+                formatter: function(params) {
+                    return `<div style="font-weight:bold;font-size:14px;color:#ffffff;">${params.value[2]}</div>
+                            <div style="color:#ffffff;">情感分数: <span style="color:#fff;font-weight:bold">${params.value[1].toFixed(2)}</span></div>`;
+                },
+                backgroundColor: 'rgba(0,0,0,0.85)',
+                borderColor: 'rgba(255,255,255,0.2)',
+                borderWidth: 1,
+                padding: [10, 15]
+            },
+            grid: {
+                left: '12%',  // 进一步增加左侧边距，让纵轴标签有足够空间
+                right: '10%',
+                bottom: '10%',
+                top: '10%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'value',
+                name: '话题ID',
+                nameGap: 25,
+                nameTextStyle: {
+                    fontWeight: 'bold'
+                },
+                splitLine: {
+                    lineStyle: {
+                        type: 'dashed',
+                        opacity: 0.3
+                    }
+                }
+            },
+            yAxis: {
+                type: 'value',
+                name: '情感分数',
+                nameGap: 40,
+                nameRotate: 0,  // 确保名称水平显示
+                nameLocation: 'middle',
+                nameTextStyle: {
+                    fontWeight: 'bold',
+                    padding: [0, 0, 15, 0],
+                    fontSize: 14,
+                    lineHeight: 20,
+                    align: 'center',
+                    verticalAlign: 'middle'
+                },
+                axisLabel: {  // 添加轴标签样式
+                    formatter: '{value}',
+                    padding: [3, 0, 0, 0],
+                    margin: 10,
+                    fontSize: 12
+                },
+                min: 0,
+                max: 1,
+                splitLine: {
+                    lineStyle: {
+                        type: 'dashed',
+                        opacity: 0.3
+                    }
+                }
+            },
+            visualMap: {
+                show: true,
+                min: 0,
+                max: 1,
+                dimension: 1,
+                left: 'right', // 将图例放置在右侧
+                top: 'top', // 将图例放置在顶部
+                text: ['消极', '积极'], // 调整文本顺序
+                calculable: true,
+                inRange: {
+                    color: ['#f44336', '#ff9800', '#4caf50']
+                }
+            },
+            series: [{
+                name: '情感分数',
+                type: 'scatter',
+                symbolSize: 18,
+                itemStyle: {
+                    borderColor: '#fff',
+                    borderWidth: 1,
+                    shadowBlur: 10,
+                    shadowColor: 'rgba(0, 0, 0, 0.2)'
+                },
+                emphasis: {
+                    itemStyle: {
+                        borderColor: '#fff',
+                        borderWidth: 2,
+                        shadowBlur: 20,
+                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                    }
+                },
+                data: sentimentData,
+                markLine: {
+                    silent: true,
+                    symbol: ['none', 'none'],
+                    label: {
+                        show: true,
+                        position: 'end',
+                        formatter: function(params) {
+                            return params.value === 0.3 ? '消极阈值' : '积极阈值';
+                        }
+                    },
+                    data: [
+                        {
+                            yAxis: 0.3,
+                            lineStyle: {
+                                color: '#f44336',
+                                width: 2,
+                                type: 'dashed'
+                            }
+                        },
+                        {
+                            yAxis: 0.7,
+                            lineStyle: {
+                                color: '#4caf50',
+                                width: 2,
+                                type: 'dashed'
+                            }
+                        }
+                    ]
+                },
+                animationDelay: function (idx) {
+                    return idx * 20;
+                }
+            }],
+            animation: true,
+            animationEasing: 'elasticOut'
+        };
+        
+        sentimentScatterChart.setOption(option);
+        
+        // 自适应窗口大小变化
+        window.addEventListener('resize', function() {
+            sentimentScatterChart.resize();
+        });
+    }
+
+    function renderSentimentWordsCharts(data) {
+        // 统计积极、中性和消极词汇总数
+        let totalPositive = 0, totalNeutral = 0, totalNegative = 0;
+        let totalWords = 0;
+        
+        data.forEach(item => {
+            totalPositive += item.positive_count || 0;
+            totalNeutral += item.neutral_count || 0;
+            totalNegative += item.negative_count || 0;
+        });
+        
+        totalWords = totalPositive + totalNeutral + totalNegative;
+        
+        // 创建积极词汇饼图
+        const positiveWordsChart = echarts.init(document.getElementById('positiveWordsChart'));
+        if (positiveWordsChart) {
+            const positiveOption = createSentimentWordsPieOption('积极词汇', totalPositive, totalWords, '#4caf50', '#e0e0e0');
+            positiveWordsChart.setOption(positiveOption);
+            
+            window.addEventListener('resize', function() {
+                positiveWordsChart.resize();
+            });
+        }
+        
+        // 创建中性词汇饼图
+        const neutralWordsChart = echarts.init(document.getElementById('neutralWordsChart'));
+        if (neutralWordsChart) {
+            const neutralOption = createSentimentWordsPieOption('中性词汇', totalNeutral, totalWords, '#ff9800', '#e0e0e0');
+            neutralWordsChart.setOption(neutralOption);
+            
+            window.addEventListener('resize', function() {
+                neutralWordsChart.resize();
+            });
+        }
+        
+        // 创建消极词汇饼图
+        const negativeWordsChart = echarts.init(document.getElementById('negativeWordsChart'));
+        if (negativeWordsChart) {
+            const negativeOption = createSentimentWordsPieOption('消极词汇', totalNegative, totalWords, '#f44336', '#e0e0e0');
+            negativeWordsChart.setOption(negativeOption);
+            
+            window.addEventListener('resize', function() {
+                negativeWordsChart.resize();
+            });
+        }
+    }
+    
+    function createSentimentWordsPieOption(title, value, total, color, otherColor) {
+        const percentage = ((value / total) * 100).toFixed(1);
+        return {
+                tooltip: {
+                    trigger: 'item',
+                formatter: '{b}: {c} ({d}%)',
+                backgroundColor: 'rgba(50,50,50,0.85)',
+                borderColor: 'rgba(255,255,255,0.2)',
+                borderWidth: 1,
+                padding: [10, 15],
+                textStyle: {
+                    fontSize: 14,
+                    color: '#fff'
+                }
+            },
+            title: {
+                text: `{a|${percentage}%}`,
+                left: 'center',
+                top: 'center',
+                textStyle: {
+                    rich: {
+                        a: {
+                            fontSize: 28,
+                            fontWeight: 'bold',
+                            color: color
+                        }
+                    }
+                }
+            },
+            legend: {
+                show: false
+                },
+                series: [
+                    {
+                        name: '词汇统计',
+                        type: 'pie',
+                    radius: ['60%', '85%'],
+                        center: ['50%', '50%'],
+                    avoidLabelOverlap: false,
+                    hoverAnimation: false,
+                    itemStyle: {
+                        borderColor: '#fff',
+                        borderWidth: 2,
+                        shadowBlur: 10,
+                        shadowColor: 'rgba(0, 0, 0, 0.2)'
+                    },
+                    label: {
+                        show: false
+                    },
+                    labelLine: {
+                        show: false
+                    },
+                        data: [
+                        { 
+                            value: value, 
+                            name: title, 
+                            itemStyle: { 
+                                color: {
+                                    type: 'linear',
+                                    x: 0,
+                                    y: 0,
+                                    x2: 0,
+                                    y2: 1,
+                                    colorStops: [{
+                                        offset: 0, 
+                                        color: color === '#4caf50' ? '#42b983' : 
+                                               color === '#ff9800' ? '#ffeb3b' : '#ff5252'
+                                    }, {
+                                        offset: 1, 
+                                        color: color
+                                    }]
+                                }
+                            } 
+                        },
+                        { 
+                            value: total - value, 
+                            name: '其他词汇', 
+                            itemStyle: {
+                                color: otherColor,
+                                opacity: 0.2
+                            } 
+                        }
+                    ],
+                    animationType: 'scale',
+                    animationEasing: 'elasticOut',
+                    animationDelay: function (idx) {
+                        return Math.random() * 200;
+                        }
+                    }
+                ]
+            };
+    }
+
+    function renderSentimentTable(data) {
+        const tableBody = $('#sentimentTable tbody');
+        tableBody.empty();
+        
+        data.forEach(item => {
+            let sentimentClass = '';
+            let sentimentText = '';
+            let sentimentBadge = '';
+            
+            if (item.sentiment_score >= 0.7) {
+                sentimentClass = 'text-success';
+                sentimentText = '积极';
+                sentimentBadge = 'success';
+            } else if (item.sentiment_score <= 0.3) {
+                sentimentClass = 'text-danger';
+                sentimentText = '消极';
+                sentimentBadge = 'danger';
+            } else {
+                sentimentClass = 'text-warning';
+                sentimentText = '中性';
+                sentimentBadge = 'warning';
+            }
+            
+            // 生成关键词标签
+            const keywordsArray = item.keywords ? (typeof item.keywords === 'string' ? item.keywords.split(',') : item.keywords) : [];
+            const keywordBadges = keywordsArray.map(keyword => 
+                `<span class="badge bg-light text-dark me-1">${keyword}</span>`
+            ).join('');
+            
+            tableBody.append(`
+                <tr>
+                    <td><a href="${item.url}" target="_blank" class="text-primary fw-medium">${item.title}</a></td>
+                    <td>
+                        <div class="progress" style="height: 8px; width: 100px;">
+                            <div class="progress-bar bg-${sentimentBadge}" role="progressbar" 
+                                 style="width: ${item.sentiment_score * 100}%;" 
+                                 aria-valuenow="${item.sentiment_score}" aria-valuemin="0" aria-valuemax="1">
+                            </div>
+                        </div>
+                        <small class="d-block mt-1">${item.sentiment_score ? item.sentiment_score.toFixed(2) : 'N/A'}</small>
+                    </td>
+                    <td><span class="badge bg-${sentimentBadge}">${sentimentText}</span></td>
+                    <td><span class="badge bg-success rounded-pill">${item.positive_count || 0}</span></td>
+                    <td><span class="badge bg-warning rounded-pill">${item.neutral_count || 0}</span></td>
+                    <td><span class="badge bg-danger rounded-pill">${item.negative_count || 0}</span></td>
+                    <td>${keywordBadges || '<span class="text-muted">无关键词</span>'}</td>
+                </tr>
+            `);
+        });
+    }
+});
+</script>
+{% endblock %}

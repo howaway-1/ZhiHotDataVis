@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}个人资料 - 知乎热榜数据分析平台{% endblock %}
+
+{% block page_title %}个人资料{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <!-- 头像卡片 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">头像设置</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="avatar-preview mb-4">
+                        {% if user.avatar_url %}
+                        <img src="{{ user.avatar_url }}" alt="用户头像" class="rounded-circle profile-avatar" width="150px">
+                        {% else %}
+                        <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=random" alt="用户头像" class="rounded-circle profile-avatar" style="width: 100px;">
+                        {% endif %}
+                    </div>
+                    <form method="post" enctype="multipart/form-data" id="avatar-form">
+                        <input type="hidden" name="action" value="upload_avatar">
+                        <div class="mb-3">
+                            <label for="avatar" class="form-label">选择新头像</label>
+                            <input type="file" class="form-control" id="avatar" name="avatar" accept=".jpg,.jpeg,.png,.gif">
+                            <div class="form-text">支持JPG、PNG、GIF格式，最大2MB</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-upload me-1"></i> 上传头像
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-8">
+            <!-- 基本资料卡片 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title">基本资料</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="profile-form">
+                        <input type="hidden" name="action" value="update_profile">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="username" class="form-label">用户名</label>
+                                <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">电子邮箱</label>
+                                <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">注册时间</label>
+                                <p class="form-control-static">{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">最后登录</label>
+                                <p class="form-control-static">{{ user.last_login.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-save me-1"></i> 保存修改
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 密码修改卡片 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">修改密码</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="password-form">
+                        <input type="hidden" name="action" value="update_password">
+                        <div class="mb-3">
+                            <label for="current_password" class="form-label">当前密码</label>
+                            <input type="password" class="form-control" id="current_password" name="current_password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label">新密码</label>
+                            <input type="password" class="form-control" id="new_password" name="new_password" required minlength="6">
+                            <div class="form-text">密码至少6个字符</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">确认新密码</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required minlength="6">
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-key me-1"></i> 更新密码
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .profile-avatar {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        border: 5px solid #fff;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .avatar-preview {
+        display: inline-block;
+        position: relative;
+        margin: 10px 0;
+    }
+    
+    .form-control-static {
+        padding: 0.375rem 0.75rem;
+        background-color: var(--body-bg, #f6f8fb);
+        border-radius: 4px;
+        margin-bottom: 0;
+        border: 1px solid var(--border-color, rgba(0, 0, 0, 0.05));
+    }
+    
+    .form-control {
+        background-color: var(--body-bg, #f6f8fb);
+        border: 1px solid var(--border-color, rgba(0, 0, 0, 0.05));
+    }
+    
+    .form-control:focus {
+        border-color: var(--primary-color, #3aa1ff);
+        box-shadow: 0 0 0 0.25rem rgba(58, 161, 255, 0.15);
+    }
+    
+    .card {
+        border: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        margin-bottom: 20px;
+    }
+    
+    .card-header {
+        background-color: var(--card-bg, #ffffff);
+        border-bottom: 1px solid var(--border-color, rgba(0, 0, 0, 0.05));
+        padding: 16px 20px;
+    }
+    
+    .card-title {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 500;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(to right, var(--primary-color, #3aa1ff), #1976d2);
+        border: none;
+        transition: all 0.3s;
+    }
+    
+    .btn-primary:hover {
+        opacity: 0.95;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // 预览头像
+        $('#avatar').change(function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $('.avatar-preview img').attr('src', e.target.result);
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // 密码确认验证
+        $('#password-form').submit(function(e) {
+            const newPassword = $('#new_password').val();
+            const confirmPassword = $('#confirm_password').val();
+            
+            if (newPassword !== confirmPassword) {
+                e.preventDefault();
+                // 显示自定义警告框
+                const alertHtml = `
+                <div class="alert alert-danger alert-dismissible fade show custom-alert" role="alert">
+                    <div class="alert-icon">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                    </div>
+                    <div class="alert-content">
+                        两次输入的密码不一致
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                `;
+                $('.container-fluid').prepend(alertHtml);
+                return false;
+            }
+            
+            return true;
+        });
+    });
+</script>
+{% endblock %} 

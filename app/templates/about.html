@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}关于 - 知乎热榜数据分析平台{% endblock %}
+
+{% block page_title %}关于{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">关于本项目</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-5">
+                        <h3>项目介绍</h3>
+                        <p class="lead">知乎热榜数据分析与可视化平台是一个用于分析知乎热榜数据的综合性平台，为用户提供热榜数据的可视化分析与洞察。</p>
+                        <p>本平台通过爬取知乎热榜数据，并对数据进行处理和分析，展示热词统计、舆情分析、文章统计等多种可视化图表，帮助用户了解当前热门话题和舆论趋势。</p>
+                    </div>
+
+                    <div class="mb-5">
+                        <h3>功能特点</h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ul class="list-group mb-4 feature-list">
+                                    <li class="list-group-item">
+                                        <i class="bi bi-fire text-danger"></i>
+                                        <strong>热词统计</strong>：分析高频词，生成词云
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-emoji-smile text-success"></i>
+                                        <strong>舆情分析</strong>：对热榜内容进行情感分析，判断舆论趋势
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-bar-chart-line text-primary"></i>
+                                        <strong>文章统计</strong>：统计不同文章的互动数据
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="list-group mb-4 feature-list">
+                                    <li class="list-group-item">
+                                        <i class="bi bi-cloud text-info"></i>
+                                        <strong>词云图</strong>：直观展示知乎热榜话题趋势
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-person-circle text-warning"></i>
+                                        <strong>用户管理</strong>：用户注册、登录、权限管理
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-globe text-success"></i>
+                                        <strong>数据爬取</strong>：自动抓取话题数据，支持定期更新
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <h3>技术栈</h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>后端技术</h5>
+                                <ul class="list-group mb-4 tech-list">
+                                    <li class="list-group-item">
+                                        <i class="bi bi-server text-primary"></i>
+                                        <strong>Flask框架</strong>：轻量级Web应用框架
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-database text-success"></i>
+                                        <strong>MySQL</strong>：数据存储和管理
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-file-earmark-code text-danger"></i>
+                                        <strong>SnowNLP</strong>：情感分析和文本处理
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>前端技术</h5>
+                                <ul class="list-group mb-4 tech-list">
+                                    <li class="list-group-item">
+                                        <i class="bi bi-window text-info"></i>
+                                        <strong>HTML/CSS/JavaScript</strong>：页面构建和交互
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-bootstrap text-primary"></i>
+                                        <strong>Bootstrap</strong>：响应式页面设计
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-graph-up text-success"></i>
+                                        <strong>ECharts</strong>：数据可视化图表
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3>联系与反馈</h3>
+                        <p>如果您在使用过程中有任何问题或建议，请联系我：</p>
+                        <ul class="contact-list">
+                            <li>邮箱：ymx18035326608@163.com</li>
+<!--                            <li>GitHub：<a href="https://github.com/example/zhihu-hot-data-vis" target="_blank">知乎热榜数据分析项目</a></li>-->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .card {
+        border: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        margin-bottom: 20px;
+    }
+    
+    .card-header {
+        background-color: var(--card-bg, #ffffff);
+        border-bottom: 1px solid var(--border-color, rgba(0, 0, 0, 0.05));
+        padding: 16px 20px;
+    }
+    
+    .card-title {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 500;
+    }
+    
+    h3 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--text-color, #262626);
+    }
+    
+    h5 {
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin-bottom: 1rem;
+        color: var(--text-color, #262626);
+    }
+    
+    .list-group-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
+        border: 1px solid var(--border-color, rgba(0, 0, 0, 0.05));
+        background-color: var(--card-bg, #ffffff);
+        transition: all 0.3s ease;
+    }
+    
+    .list-group-item:hover {
+        background-color: var(--body-bg, #f6f8fb);
+    }
+    
+    .list-group-item i {
+        font-size: 1.2rem;
+        margin-right: 15px;
+    }
+    
+    .list-group-item strong {
+        margin-right: 8px;
+    }
+    
+    .contact-list {
+        list-style: none;
+        padding-left: 0;
+    }
+    
+    .contact-list li {
+        padding: 8px 0;
+    }
+    
+    .contact-list a {
+        color: var(--primary-color, #3aa1ff);
+        text-decoration: none;
+    }
+    
+    .contact-list a:hover {
+        text-decoration: underline;
+    }
+    
+    .lead {
+        color: var(--text-secondary, #666666);
+        font-weight: 400;
+    }
+</style>
+{% endblock %}

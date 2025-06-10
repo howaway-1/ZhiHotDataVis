@@ -1,0 +1,691 @@
+{% extends "base.html" %}
+
+{% block title %}词云图 - 知乎热榜数据分析平台{% endblock %}
+
+{% block page_title %}热榜词云图{% endblock %}
+
+{% block head_extra %}
+<!-- 使用本地资源替代CDN -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
+<!-- 确保加载main.js -->
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}
+
+{% block styles %}
+<style>
+/* 自定义小型按钮样式 */
+.btn-xs {
+    padding: 0.15rem 0.4rem;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    border-radius: 0.2rem;
+    margin: 0 1px;
+    transition: all 0.2s;
+}
+
+.btn-xs.active {
+    transform: scale(1.1);
+    z-index: 2;
+}
+
+/* 按钮组样式优化 */
+.btn-group-sm .btn-xs {
+    margin-right: 1px;
+    position: relative;
+}
+
+/* 切换按钮的提示文本 */
+.btn-tooltip {
+    position: absolute;
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.btn:hover .btn-tooltip {
+    opacity: 1;
+}
+
+/* 词云容器样式 */
+#wordCloudContainer {
+    min-height: 500px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ef 100%);
+    border-radius: 8px;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+    position: relative;
+    overflow: hidden;
+    padding: 20px;
+}
+
+/* 词云项样式 */
+.word-cloud-item {
+    display: inline-block;
+    font-weight: bold;
+    margin: 5px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    background-color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    animation: fadeIn 0.5s ease-out;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.word-cloud-item:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    z-index: 10;
+}
+
+/* 高亮效果 */
+.highlight-item {
+    animation: pulse 1.5s infinite;
+}
+
+/* 强调活动按钮 */
+.btn-outline-primary.active,
+.btn-outline-secondary.active,
+.btn-outline-info.active {
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+}
+
+/* 渐变效果 */
+.card-header {
+    background: linear-gradient(to right, #f8f9fa, #e9ecef);
+}
+
+/* 加入一些简单动画 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 rgba(0,0,0,0); }
+    50% { transform: scale(1.05); box-shadow: 0 0 10px rgba(0,0,0,0.2); }
+    100% { transform: scale(1); box-shadow: 0 0 0 rgba(0,0,0,0); }
+}
+
+/* 自定义进度条样式 */
+.progress {
+    height: 15px;
+    background-color: rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+    position: relative;
+}
+
+.progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg,
+                               rgba(255,255,255,0) 25%,
+                               rgba(255,255,255,0.2) 25%,
+                               rgba(255,255,255,0.2) 50%,
+                               rgba(255,255,255,0) 50%,
+                               rgba(255,255,255,0) 75%,
+                               rgba(255,255,255,0.2) 75%);
+    background-size: 15px 15px;
+    animation: progressAnimation 1s linear infinite;
+}
+
+@keyframes progressAnimation {
+    0% { background-position: 0 0; }
+    100% { background-position: 15px 0; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">热榜词云图</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">本页面通过词云图直观展示知乎热榜话题中的高频词汇，帮助您了解当前热门关键词和话题趋势。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card card-chart">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title">词云可视化</h5>
+                    <div class="d-flex">
+                        <div class="btn-group btn-group-sm me-2">
+                            <button type="button" class="btn btn-xs btn-outline-primary active" id="circleLayout">
+                                <i class="bi bi-circle-fill"></i>
+                                <span class="btn-tooltip">圆形布局</span>
+                            </button>
+                            <button type="button" class="btn btn-xs btn-outline-primary" id="rectLayout">
+                                <i class="bi bi-square-fill"></i>
+                                <span class="btn-tooltip">矩形布局</span>
+                            </button>
+                        </div>
+                        <div class="btn-group btn-group-sm me-2">
+                            <button type="button" class="btn btn-xs btn-outline-secondary" id="blueTheme">
+                                <span style="color:#1a73e8;">蓝</span>
+                                <span class="btn-tooltip">蓝色主题</span>
+                            </button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary" id="greenTheme">
+                                <span style="color:#0f9d58;">绿</span>
+                                <span class="btn-tooltip">绿色主题</span>
+                        </button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary" id="redTheme">
+                                <span style="color:#ea4335;">红</span>
+                                <span class="btn-tooltip">红色主题</span>
+                        </button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary active" id="rainbowTheme">
+                                <span style="color:#4285f4;">彩</span>
+                                <span class="btn-tooltip">彩色主题</span>
+                        </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="wordCloudContainer" class="d-flex flex-wrap justify-content-center align-items-center p-4">
+                        <!-- 词云将由JavaScript动态生成 -->
+                        <div class="text-center p-3 loading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <p class="mt-2">加载中...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-lg-6">
+            <div class="card h-100 card-chart">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title">词频统计</h5>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-xs btn-outline-secondary" id="barChart">
+                            <i class="bi bi-bar-chart-fill"></i>
+                            <span class="btn-tooltip">柱状图</span>
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary active" id="horizontalBarChart">
+                            <i class="bi bi-bar-chart-steps"></i>
+                            <span class="btn-tooltip">条形图</span>
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary" id="pieChart">
+                            <i class="bi bi-pie-chart-fill"></i>
+                            <span class="btn-tooltip">饼状图</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="wordFrequencyChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title">热词列表</h5>
+                    <div class="input-group" style="width: 200px;">
+                        <input type="text" class="form-control form-control-sm" id="wordSearch" placeholder="搜索关键词...">
+                        <button class="btn btn-sm btn-outline-secondary" type="button" id="clearSearch">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="wordFrequencyTable">
+                            <thead>
+                                <tr>
+                                    <th>排名</th>
+                                    <th>关键词</th>
+                                    <th>出现频率</th>
+                                    <th>占比</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 数据将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- 使用本地JS文件 -->
+<script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+<script>
+$(document).ready(function() {
+    // 从后端获取词云数据而不是使用静态数据
+    let wordCloudData = [];
+
+    // 加载词云数据
+    function loadWordCloudData() {
+        $.ajax({
+            url: "{{ url_for('analysis.get_word_cloud_data') }}",
+            type: "GET",
+            dataType: "json",
+            beforeSend: function() {
+                $('.loading').show();
+            },
+            success: function(data) {
+                if (data.status === 'success' && Array.isArray(data.data)) {
+                    wordCloudData = data.data;
+                    renderWordCloud();
+                    renderFrequencyChart('horizontalBar');
+                    renderWordFrequencyTable(wordCloudData);
+                } else {
+                    console.error("词云数据格式不正确:", data);
+                    $('.loading').html('<div class="alert alert-danger">数据格式不正确，请联系管理员</div>');
+                }
+                $('.loading').hide();
+            },
+            error: function(xhr, status, error) {
+                console.error("获取词云数据失败:", error);
+                $('.loading').html('<div class="alert alert-danger">获取数据失败，请稍后再试</div>');
+            }
+        });
+    }
+
+    // 颜色主题 - 使用更鲜明的颜色
+    const colorThemes = {
+        blue: ['#0d47a1', '#1565c0', '#1976d2', '#1e88e5', '#2196f3', '#42a5f5', '#0d6efd', '#2979ff'],
+        green: ['#1b5e20', '#2e7d32', '#388e3c', '#43a047', '#4caf50', '#66bb6a', '#00c853', '#00e676'],
+        red: ['#b71c1c', '#c62828', '#d32f2f', '#e53935', '#f44336', '#ef5350', '#ff1744', '#ff5252'],
+        rainbow: ['#2962ff', '#00c853', '#d50000', '#ffab00', '#6200ea', '#f50057', '#00b8d4', '#304ffe']
+    };
+
+    // 布局配置
+    const layouts = {
+        circle: {
+            containerClass: 'd-flex justify-content-center align-items-center flex-wrap',
+            rotationRange: [-5, 5]
+        },
+        rect: {
+            containerClass: 'd-flex flex-wrap justify-content-center align-items-start',
+            rotationRange: [0, 0]
+        }
+    };
+
+    let currentTheme = 'rainbow';
+    let currentLayout = 'circle';
+    let chartInstance = null;
+
+    // 渲染词云
+    function renderWordCloud() {
+        const container = $('#wordCloudContainer');
+        container.empty();
+
+        // 获取最大最小频率值
+        const maxValue = Math.max(...wordCloudData.map(item => item.value));
+        const minValue = Math.min(...wordCloudData.map(item => item.value));
+        const range = maxValue - minValue;
+
+        // 获取当前主题颜色
+        const colors = colorThemes[currentTheme];
+
+        // 获取当前布局配置
+        const layout = layouts[currentLayout];
+
+        // 创建词云元素的包装容器
+        const wrapper = $(`<div class="position-relative ${layout.containerClass}" style="width:100%; height:100%; padding: 20px;"></div>`);
+
+        // 为每个词创建元素
+        wordCloudData.forEach((item, index) => {
+            // 计算字体大小 (18px - 48px)
+            const fontSize = 18 + ((item.value - minValue) / (range || 1)) * 30;
+
+            // 随机旋转角度
+            const [minRotation, maxRotation] = layout.rotationRange;
+            const rotation = minRotation + Math.random() * (maxRotation - minRotation);
+
+            // 选择颜色 - 确保使用饱和度高的颜色
+            const color = colors[index % colors.length];
+
+            // 创建词云项元素 - 使用更高对比度的样式
+            const wordElement = $(`<div class="word-cloud-item"
+                                    style="font-size: ${fontSize}px;
+                                          transform: rotate(${rotation}deg);
+                                          color: ${color};
+                                          background-color: rgba(255, 255, 255, 0.95);
+                                          border-left: 4px solid ${color};
+                                          border: 1px solid rgba(0,0,0,0.15);
+                                          margin: ${Math.floor(fontSize/5)}px;
+                                          padding: 6px 12px;
+                                          box-shadow: 2px 2px 4px rgba(0,0,0,0.05);
+                                          z-index: ${Math.floor(item.value)};
+                                          text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+                                          font-weight: ${Math.min(700, 500 + (item.value - minValue) / range * 200)};">
+                                    ${item.name}
+                                </div>`);
+
+            // 添加提示
+            wordElement.attr('title', `${item.name}: ${item.value}`);
+
+            // 添加点击事件
+            wordElement.click(function() {
+                // 先重置所有词云项
+                $('.word-cloud-item').removeClass('highlight-item')
+                     .css({
+                         'transform': `rotate(${rotation}deg)`,
+                         'box-shadow': '2px 2px 4px rgba(0,0,0,0.05)',
+                         'z-index': Math.floor(item.value)
+                     });
+
+                // 高亮显示该词
+                $(this).addClass('highlight-item')
+                     .css({
+                         'transform': `rotate(${rotation}deg) scale(1.2)`,
+                         'box-shadow': `0 0 15px ${color}, 0 0 5px ${color}`,
+                         'z-index': 100
+                     });
+
+                // 在表格中找到对应行并高亮
+                const tableRows = $('#wordFrequencyTable tbody tr');
+                tableRows.removeClass('table-active');
+                const matchRow = tableRows.filter(function() {
+                    return $(this).find('td:nth-child(2)').text() === item.name;
+                });
+                matchRow.addClass('table-active');
+
+                // 滚动到表格对应位置
+                if(matchRow.length) {
+                    $('html, body').animate({
+                        scrollTop: matchRow.offset().top - 200
+                    }, 500);
+                }
+            });
+
+            // 添加到容器
+            wrapper.append(wordElement);
+        });
+
+        container.append(wrapper);
+    }
+
+    // 渲染频率图表
+    function renderFrequencyChart(chartType) {
+        const ctx = document.getElementById('wordFrequencyChart').getContext('2d');
+        const topWords = wordCloudData.slice(0, 15);
+
+        // 销毁已有图表
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        // Chart.js配置
+        let config;
+
+        if (chartType === 'pie') {
+            config = {
+                type: 'pie',
+                data: {
+                    labels: topWords.map(item => item.name),
+                    datasets: [{
+                        label: '出现频率',
+                        data: topWords.map(item => item.value),
+                        backgroundColor: topWords.map((_, index) => colorThemes[currentTheme][index % colorThemes[currentTheme].length]),
+                        borderColor: 'rgba(255, 255, 255, 0.8)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'right',
+                            labels: {
+                                boxWidth: 15,
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+        } else {
+            config = {
+                type: 'bar',
+                data: {
+                    labels: topWords.map(item => item.name),
+                    datasets: [{
+                        label: '出现频率',
+                data: topWords.map(item => item.value),
+                        backgroundColor: topWords.map((_, index) => colorThemes[currentTheme][index % colorThemes[currentTheme].length]),
+                        borderColor: 'rgba(255, 255, 255, 0.5)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: chartType === 'horizontalBar' ? 'y' : 'x',
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            };
+        }
+
+        // 创建图表
+        chartInstance = new Chart(ctx, config);
+    }
+
+    // 渲染词频表格
+    function renderWordFrequencyTable(data) {
+        const tableBody = $('#wordFrequencyTable tbody');
+        tableBody.empty();
+
+        if (!Array.isArray(data)) {
+            console.error('词频数据不是数组:', data);
+            return;
+        }
+
+        // 计算总频率
+        const totalFrequency = data.reduce((sum, item) => sum + safeNumber(item.value, 0), 0);
+
+        // 生成表格行
+        data.forEach((item, index) => {
+            const itemValue = safeNumber(item.value, 0);
+            const percentage = ((itemValue / totalFrequency) * 100).toFixed(2) + '%';
+
+            let rankClass = '';
+            if (index === 0) rankClass = 'text-danger fw-bold';
+            else if (index === 1) rankClass = 'text-warning fw-bold';
+            else if (index === 2) rankClass = 'text-success fw-bold';
+
+            tableBody.append(`
+                <tr>
+                    <td class="${rankClass}">${index + 1}</td>
+                    <td>${item.name || '未知词'}</td>
+                    <td>${itemValue}</td>
+                    <td>
+                        <div class="progress" style="height: 15px;">
+                            <div class="progress-bar" role="progressbar" style="width: ${percentage};
+                                                                               background: ${colorThemes[currentTheme][index % colorThemes[currentTheme].length]};"
+                                aria-valuenow="${itemValue}" aria-valuemin="0" aria-valuemax="${totalFrequency}">
+                                ${percentage}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `);
+        });
+    }
+
+    // 初始化页面加载数据
+    loadWordCloudData();
+
+    // 安全获取数字值的辅助函数 (确保在renderWordFrequencyTable中使用)
+    function safeNumber(value, defaultValue = 0) {
+        return (typeof value === 'number' && !isNaN(value)) ? value : defaultValue;
+    }
+    
+    // 添加初始提示效果
+    setTimeout(function() {
+        // 添加提示引导
+        const $guide = $(`
+            <div class="position-absolute top-0 end-0 p-3 m-3 bg-white rounded shadow-sm fade show" 
+                 style="z-index: 1050; max-width: 300px;" id="wordcloudGuide">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">词云使用提示</h6>
+                    <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <p class="small mb-1">点击任意关键词可查看详细信息并在表格中高亮显示。</p>
+                <p class="small mb-0">切换顶部按钮可改变展示样式和颜色主题。</p>
+            </div>
+        `);
+        
+        // 添加关闭功能
+        $guide.find('.btn-close').click(function() {
+            $guide.fadeOut(300, function() { $(this).remove(); });
+        });
+        
+        // 添加到容器
+        $('#wordCloudContainer').append($guide);
+        
+        // 随机高亮几个词条作为示例
+        const randomHighlight = function() {
+            // 随机选择2-3个词项进行突出显示
+            const totalItems = $('.word-cloud-item').length;
+            const highlightCount = Math.min(totalItems, Math.floor(Math.random() * 2) + 2);
+            
+            $('.word-cloud-item').removeClass('highlight-item');
+            
+            for (let i = 0; i < highlightCount; i++) {
+                const randomIndex = Math.floor(Math.random() * totalItems);
+                const $item = $('.word-cloud-item').eq(randomIndex);
+                
+                $item.addClass('highlight-item')
+                     .css({
+                         'transform': 'scale(1.1)',
+                         'box-shadow': '0 0 15px ' + $item.css('color'),
+                         'z-index': 50
+                     });
+                
+                // 300ms后恢复原状
+                setTimeout(function() {
+                    $item.removeClass('highlight-item')
+                         .css({
+                             'transform': $item.data('original-transform') || 'none',
+                             'box-shadow': '',
+                             'z-index': ''
+                         });
+                }, 1500);
+            }
+        };
+        
+        // 先保存原始样式
+        $('.word-cloud-item').each(function() {
+            $(this).data('original-transform', $(this).css('transform'));
+        });
+        
+        // 执行一次高亮
+        randomHighlight();
+        
+        // 5秒后自动关闭提示
+        setTimeout(function() {
+            $guide.fadeOut(500, function() { $(this).remove(); });
+        }, 5000);
+    }, 1000);
+    
+    // 添加彩色主题动画效果
+    setTimeout(function() {
+        if (currentTheme !== 'rainbow') {
+            $('#rainbowTheme').click();
+        }
+    }, 500);
+    
+    // 事件绑定 - 主题切换
+    $('#blueTheme, #greenTheme, #redTheme, #rainbowTheme').click(function() {
+        $(this).addClass('active').siblings().removeClass('active');
+        currentTheme = $(this).attr('id').replace('Theme', '');
+        renderWordCloud();
+        renderFrequencyChart(currentLayout === 'horizontalBar' ? 'horizontalBar' : 'bar');
+        renderWordFrequencyTable(wordCloudData);
+    });
+    
+    // 事件绑定 - 布局切换
+    $('#circleLayout, #rectLayout').click(function() {
+        $(this).addClass('active').siblings().removeClass('active');
+        currentLayout = $(this).attr('id').replace('Layout', '');
+        renderWordCloud();
+    });
+    
+    // 事件绑定 - 图表类型切换
+    $('#barChart, #horizontalBarChart, #pieChart').click(function() {
+        $(this).addClass('active').siblings().removeClass('active');
+        const chartType = $(this).attr('id').replace('Chart', '');
+        renderFrequencyChart(chartType);
+    });
+    
+    // 搜索功能
+    $('#wordSearch').on('input', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        if (searchTerm === '') {
+            renderWordFrequencyTable(wordCloudData);
+            return;
+        }
+        
+        const filteredData = wordCloudData.filter(item => 
+            item.name.toLowerCase().includes(searchTerm)
+        );
+        
+        renderWordFrequencyTable(filteredData);
+    });
+    
+    // 清除搜索
+    $('#clearSearch').click(function() {
+        $('#wordSearch').val('');
+        renderWordFrequencyTable(wordCloudData);
+    });
+});
+</script>
+{% endblock %}

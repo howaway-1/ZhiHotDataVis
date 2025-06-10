@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}热词统计 - 知乎热榜数据分析平台{% endblock %}
+
+{% block page_title %}热词统计{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">热词统计分析</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">本页面分析知乎热榜中出现频率最高的关键词，通过对这些热词的统计和分析，可以了解当前热点话题和用户关注的焦点。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100 card-chart">
+                <div class="card-header">
+                    <h5 class="card-title">热词频率统计</h5>
+                </div>
+                <div class="card-body">
+                    <div id="hotWordsChart" style="width: 100%; height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100 card-chart">
+                <div class="card-header">
+                    <h5 class="card-title">热词列表</h5>
+                </div>
+                <div class="card-body">
+                    <div class="hot-words-list">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="hotWordsTable">
+                                <thead>
+                                    <tr>
+                                        <th>排名</th>
+                                        <th>热词</th>
+                                        <th>频率</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- 数据将通过JavaScript动态加载 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card card-chart">
+                <div class="card-header">
+                    <h5 class="card-title">热词词云</h5>
+                </div>
+                <div class="card-body">
+                    <div id="wordCloudChart" style="width: 100%; height: 500px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // 显示加载状态
+    $(".card-body").each(function() {
+        if ($(this).find('[id$="Chart"]').length > 0) {
+            $(this).append('<div class="text-center p-4 loading-indicator"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">正在加载数据...</p></div>');
+        }
+    });
+    
+    // 加载热词数据
+    $.ajax({
+        url: '/analysis/api/hot_words_data',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            // 隐藏加载状态
+            $(".loading-indicator").remove();
+            
+            if (response.status === 'success') {
+                const hotWordsData = response.data;
+                renderHotWordsChart(hotWordsData);
+                renderHotWordsList(hotWordsData);
+                renderWordCloud(hotWordsData);
+            } else {
+                showError('获取热词数据失败: ' + (response.message || '未知错误'));
+            }
+        },
+        error: function(error) {
+            // 隐藏加载状态
+            $(".loading-indicator").remove();
+            console.error('获取热词数据失败:', error);
+            showError('获取热词数据失败: ' + error);
+        }
+    });
+
+    // 显示错误提示
+    function showError(message) {
+        const alertHtml = `
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <div class="alert-icon"><i class="fa-solid fa-circle-exclamation"></i></div>
+                <div class="alert-content">${message}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        $(".content-wrapper").prepend(alertHtml);
+    }
+
+    function renderHotWordsChart(hotWordsData) {
+        // 提取前15个热词数据
+        const topHotWords = hotWordsData.slice(0, 15);
+        
+        // 创建热词频率图
+        const hotWordsChart = echarts.init(document.getElementById('hotWordsChart'), 'modern');
+        if (!hotWordsChart) return;
+        
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                }
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'value',
+                name: '出现频率'
+            },
+            yAxis: {
+                type: 'category',
+                data: topHotWords.map(item => item.word),
+                name: '热词',
+                axisLabel: {
+                    interval: 0,
+                    rotate: 0
+                }
+            },
+            series: [{
+                name: '出现频率',
+                type: 'bar',
+                data: topHotWords.map(item => item.count),
+                itemStyle: {
+                    color: function(params) {
+                        // 渐变色创建
+                        return {
+                            type: 'linear',
+                            x: 0,
+                            y: 0,
+                            x2: 1,
+                            y2: 0,
+                            colorStops: [{
+                                offset: 0, color: '#3aa1ff' // 蓝色起始
+                            }, {
+                                offset: 1, color: '#36cbcb' // 青色结束
+                            }]
+                        };
+                    }
+                },
+                barWidth: '60%',
+                emphasis: {
+                    itemStyle: {
+                        shadowBlur: 10,
+                        shadowColor: 'rgba(0,0,0,0.2)'
+                    }
+                }
+            }]
+        };
+        
+        hotWordsChart.setOption(option);
+        
+        // 填充表格数据
+        const tableBody = $('#hotWordsTable tbody');
+        tableBody.empty();
+        
+        topHotWords.forEach((item, index) => {
+            tableBody.append(`
+                <tr>
+                    <td>${index + 1}</td>
+                    <td><span class="badge bg-${index < 3 ? ['danger', 'warning', 'success'][index] : 'primary'}">${item.word}</span></td>
+                    <td>${item.count}</td>
+                </tr>
+            `);
+        });
+    }
+
+    function renderHotWordsList(hotWordsData) {
+        // 注意：该功能已合并到renderHotWordsChart中通过表格展示
+    }
+
+    function renderWordCloud(hotWordsData) {
+        // 创建热词词云图
+        const wordCloudChart = echarts.init(document.getElementById('wordCloudChart'), 'modern');
+        
+        const option = {
+            tooltip: {
+                show: true,
+                formatter: function(params) {
+                    return params.name + ': ' + params.value;
+                }
+            },
+            series: [{
+                type: 'wordCloud',
+                shape: 'circle',
+                left: 'center',
+                top: 'center',
+                width: '90%',
+                height: '90%',
+                right: null,
+                bottom: null,
+                sizeRange: [12, 60],
+                rotationRange: [-45, 45],
+                rotationStep: 15,
+                gridSize: 8,
+                drawOutOfBound: false,
+                textStyle: {
+                    fontFamily: 'Inter, "Noto Sans SC", sans-serif',
+                    fontWeight: 'bold',
+                    color: function() {
+                        // 使用更柔和的颜色
+                        const colors = [
+                            '#3aa1ff', '#4ecb73', '#36cbcb', '#fbd437', '#f2637b',
+                            '#975fe4', '#5254cf', '#ff8a4c', '#4c88ff', '#39c4ff'
+                        ];
+                        return colors[Math.floor(Math.random() * colors.length)];
+                    }
+                },
+                emphasis: {
+                    textStyle: {
+                        shadowBlur: 15,
+                        shadowColor: 'rgba(0,0,0,0.2)'
+                    }
+                },
+                data: hotWordsData.map(item => ({
+                    name: item.word,
+                    value: item.count
+                }))
+            }]
+        };
+        
+        wordCloudChart.setOption(option);
+        
+        // 自适应窗口大小
+        window.addEventListener('resize', function() {
+            wordCloudChart.resize();
+            const hotWordsChartInstance = echarts.getInstanceByDom(document.getElementById('hotWordsChart'));
+            if (hotWordsChartInstance) {
+                hotWordsChartInstance.resize();
+            }
+        });
+    }
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,445 @@
+{% extends "base.html" %}
+
+{% block title %}文章统计 - 知乎热榜数据分析平台{% endblock %}
+
+{% block page_title %}文章统计{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">文章统计概览</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">本页面对知乎热榜文章数据进行统计分析，展示热度值分布、回答数统计和排名分析等，帮助您了解热榜文章的整体特征。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title">热度值统计</h5>
+                </div>
+                <div class="card-body">
+                    <div class="stats-summary mb-4" id="hotValueSummary">
+                        <div class="row text-center">
+                            <div class="col-6 mb-3">
+                                <h6>最高热度</h6>
+                                <h3 class="text-primary" id="maxHotValue">加载中...</h3>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <h6>最低热度</h6>
+                                <h3 class="text-danger" id="minHotValue">加载中...</h3>
+                            </div>
+                            <div class="col-6">
+                                <h6>平均热度</h6>
+                                <h3 class="text-success" id="avgHotValue">加载中...</h3>
+                            </div>
+                            <div class="col-6">
+                                <h6>总热度</h6>
+                                <h3 class="text-info" id="totalHotValue">加载中...</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title">回答数统计</h5>
+                </div>
+                <div class="card-body">
+                    <div class="stats-summary mb-4" id="answerSummary">
+                        <div class="row text-center">
+                            <div class="col-6 mb-3">
+                                <h6>最多回答</h6>
+                                <h3 class="text-primary" id="maxAnswers">加载中...</h3>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <h6>最少回答</h6>
+                                <h3 class="text-danger" id="minAnswers">加载中...</h3>
+                            </div>
+                            <div class="col-6">
+                                <h6>平均回答</h6>
+                                <h3 class="text-success" id="avgAnswers">加载中...</h3>
+                            </div>
+                            <div class="col-6">
+                                <h6>总回答数</h6>
+                                <h3 class="text-info" id="totalAnswers">加载中...</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-12 mb-4">
+            <div class="card h-100 card-chart">
+                <div class="card-header">
+                    <h5 class="card-title">热度分组</h5>
+                </div>
+                <div class="card-body">
+                    <div id="rankGroupsChart" style="width: 100%; height: 230px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100 card-chart">
+                <div class="card-header">
+                    <h5 class="card-title">热度值与回答数关系</h5>
+                </div>
+                <div class="card-body">
+                    <div id="hotAnswerRelationChart" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100 card-chart">
+                <div class="card-header">
+                    <h5 class="card-title">热度分布</h5>
+                </div>
+                <div class="card-body">
+                    <div id="hotDistributionChart" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">文章数据列表</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="searchInput" placeholder="搜索文章标题...">
+                            <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                                <i class="bi bi-search"></i> 搜索
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="articlesTable">
+                            <thead>
+                                <tr>
+                                    <th>排名</th>
+                                    <th>标题</th>
+                                    <th>热度值</th>
+                                    <th>回答数</th>
+                                    <th>热度/回答比</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 数据将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // 加载文章统计数据
+    $.ajax({
+        url: '/analysis/api/article_stats_data',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success') {
+                const statsData = response.data;
+                renderArticleStats(statsData);
+            }
+        },
+        error: function(error) {
+            console.error('获取文章统计数据失败:', error);
+        }
+    });
+
+    function renderArticleStats(data) {
+        // 更新统计摘要
+        updateStatsSummary(data);
+        
+        // 渲染图表
+        renderRankGroupsChart(data.rank_groups);
+        renderHotAnswerRelationChart(data.articles);
+        renderHotDistributionChart(data.articles);
+        
+        // 渲染文章列表
+        renderArticlesTable(data.articles);
+        
+        // 设置搜索功能
+        setupSearch(data.articles);
+    }
+
+    function updateStatsSummary(data) {
+        // 热度值统计
+        $('#maxHotValue').text(Math.round(data.hot_value_stats.max).toLocaleString());
+        $('#minHotValue').text(Math.round(data.hot_value_stats.min).toLocaleString());
+        $('#avgHotValue').text(Math.round(data.hot_value_stats.avg).toLocaleString());
+        $('#totalHotValue').text(Math.round(data.hot_value_stats.total).toLocaleString());
+        
+        // 回答数统计
+        $('#maxAnswers').text(data.answer_count_stats.max.toLocaleString());
+        $('#minAnswers').text(data.answer_count_stats.min.toLocaleString());
+        $('#avgAnswers').text(Math.round(data.answer_count_stats.avg).toLocaleString());
+        $('#totalAnswers').text(data.answer_count_stats.total.toLocaleString());
+    }
+
+    function renderRankGroupsChart(rankGroups) {
+        // 创建热度分组饼图
+        const rankGroupsChart = initEchart('rankGroupsChart');
+        if (!rankGroupsChart) return;
+        
+        const option = {
+            tooltip: {
+                trigger: 'item',
+                formatter: '{a} <br/>{b}: {c} ({d}%)'
+            },
+            legend: {
+                orient: 'horizontal',
+                bottom: 10,
+                data: Object.keys(rankGroups)
+            },
+            series: [
+                {
+                    name: '热度分组',
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: false,
+                    label: {
+                        show: true,
+                        formatter: '{b}: {c}'
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            fontSize: '18',
+                            fontWeight: 'bold'
+                        }
+                    },
+                    labelLine: {
+                        show: true
+                    },
+                    data: Object.entries(rankGroups).map(([key, value]) => {
+                        let color = '#4caf50';
+                        if (key === '前10名') color = '#f44336';
+                        else if (key === '11-20名') color = '#ff9800';
+                        
+                        return {
+                            name: key,
+                            value: value,
+                            itemStyle: { color: color }
+                        };
+                    })
+                }
+            ]
+        };
+        
+        rankGroupsChart.setOption(option);
+    }
+
+    function renderHotAnswerRelationChart(articles) {
+        // 提取热度值和回答数数据
+        const data = articles.map(article => {
+            const match = article.hot_value.match(/\d+/);
+            const hotValue = match ? parseInt(match[0]) : 0;
+            return [hotValue, article.answer_count, article.title];
+        });
+        
+        // 创建热度值与回答数关系散点图
+        const hotAnswerRelationChart = initEchart('hotAnswerRelationChart');
+        if (!hotAnswerRelationChart) return;
+        
+        const option = {
+            tooltip: {
+                trigger: 'item',
+                formatter: function(params) {
+                    return `${params.value[2]}<br>热度值: ${params.value[0]}<br>回答数: ${params.value[1]}`;
+                }
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'value',
+                name: '热度值',
+                axisLabel: {
+                    formatter: '{value}'
+                }
+            },
+            yAxis: {
+                type: 'value',
+                name: '回答数'
+            },
+            series: [{
+                name: '热度与回答数',
+                type: 'scatter',
+                symbolSize: function(value) {
+                    return Math.sqrt(value[0]) / 10 + 10;
+                },
+                data: data,
+                itemStyle: {
+                    color: function(params) {
+                        // 根据热度值设置颜色
+                        const hotValue = params.value[0];
+                        if (hotValue > 1000) return '#f44336';
+                        if (hotValue > 500) return '#ff9800';
+                        return '#4caf50';
+                    }
+                }
+            }]
+        };
+        
+        hotAnswerRelationChart.setOption(option);
+    }
+
+    function renderHotDistributionChart(articles) {
+        // 提取热度值数据
+        const hotValues = articles.map(article => {
+            const match = article.hot_value.match(/\d+/);
+            return match ? parseInt(match[0]) : 0;
+        });
+        
+        // 计算热度值区间
+        const intervals = [0, 100, 200, 500, 1000, 2000, 5000, 10000];
+        const intervalCounts = new Array(intervals.length).fill(0);
+        
+        hotValues.forEach(value => {
+            for (let i = intervals.length - 1; i >= 0; i--) {
+                if (value >= intervals[i]) {
+                    intervalCounts[i]++;
+                    break;
+                }
+            }
+        });
+        
+        // 创建热度分布图
+        const hotDistributionChart = initEchart('hotDistributionChart');
+        if (!hotDistributionChart) return;
+        
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                },
+                formatter: function(params) {
+                    const i = params[0].dataIndex;
+                    const start = intervals[i];
+                    const end = i < intervals.length - 1 ? intervals[i + 1] : '∞';
+                    return `热度区间: ${start} - ${end}<br>文章数: ${params[0].value}`;
+                }
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: intervals.map((val, idx) => {
+                    const end = idx < intervals.length - 1 ? intervals[idx + 1] : '∞';
+                    return `${val}-${end}`;
+                }),
+                name: '热度区间',
+                axisLabel: {
+                    interval: 0,
+                    rotate: 30
+                }
+            },
+            yAxis: {
+                type: 'value',
+                name: '文章数量'
+            },
+            series: [{
+                name: '文章数量',
+                type: 'bar',
+                data: intervalCounts,
+                itemStyle: {
+                    color: function(params) {
+                        const colorList = ['#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722', '#f44336'];
+                        return colorList[params.dataIndex];
+                    }
+                }
+            }]
+        };
+        
+        hotDistributionChart.setOption(option);
+    }
+
+    function renderArticlesTable(articles) {
+        const tableBody = $('#articlesTable tbody');
+        tableBody.empty();
+        
+        articles.forEach(article => {
+            const match = article.hot_value.match(/\d+/);
+            const hotValue = match ? parseInt(match[0]) : 0;
+            const hotAnswerRatio = article.answer_count > 0 ? (hotValue / article.answer_count).toFixed(2) : 'N/A';
+            
+            let ratioClass = '';
+            if (hotAnswerRatio !== 'N/A') {
+                if (hotAnswerRatio > 100) ratioClass = 'text-success';
+                else if (hotAnswerRatio < 50) ratioClass = 'text-danger';
+                else ratioClass = 'text-warning';
+            }
+            
+            tableBody.append(`
+                <tr>
+                    <td>${article.rank}</td>
+                    <td><a href="${article.url}" target="_blank">${article.title}</a></td>
+                    <td>${article.hot_value}</td>
+                    <td>${article.answer_count}</td>
+                    <td class="${ratioClass}">${hotAnswerRatio}</td>
+                </tr>
+            `);
+        });
+    }
+
+    function setupSearch(articles) {
+        $('#searchButton').click(function() {
+            searchArticles();
+        });
+        
+        $('#searchInput').keypress(function(e) {
+            if (e.which === 13) {
+                searchArticles();
+            }
+        });
+        
+        function searchArticles() {
+            const searchTerm = $('#searchInput').val().toLowerCase();
+            
+            if (searchTerm === '') {
+                renderArticlesTable(articles);
+                return;
+            }
+            
+            const filteredArticles = articles.filter(article => 
+                article.title.toLowerCase().includes(searchTerm)
+            );
+            
+            renderArticlesTable(filteredArticles);
+        }
+    }
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 知乎热榜数据分析平台{% endblock %}
+
+{% block page_title %}知乎热榜数据分析平台{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">基于知乎平台的热门问题与回答的数据分析与可视化</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">欢迎使用知乎热榜数据分析平台，这里提供了对知乎热榜话题的全方位分析功能。</p>
+                    
+                    {% if session.get('user_id') %}
+                    <p>您可以通过左侧导航栏访问各种分析功能，包括热词统计、舆情分析、文章统计和词云图等。</p>
+                    <div class="mt-4">
+                        <a href="{{ url_for('analysis.dashboard') }}" class="btn btn-primary">
+                            <i class="fas fa-tachometer-alt"></i> 查看数据仪表盘
+                        </a>
+                        <button id="refresh-data-ajax" class="btn btn-primary ms-2">
+                            <i class="fas fa-sync-alt"></i> 刷新热榜数据
+                        </button>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info custom-alert mt-3">
+                        <div class="alert-icon">
+                            <i class="fa-solid fa-circle-info"></i>
+                        </div>
+                        <div class="alert-content">
+                            <h5>需要登录</h5>
+                            <p>要访问完整的数据分析功能，请先登录或注册账号。</p>
+                            <div class="mt-3">
+                                <a href="{{ url_for('auth.login') }}" class="btn btn-primary me-2">
+                                    <i class="bi bi-box-arrow-in-right"></i> 登录
+                                </a>
+                                <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary">
+                                    <i class="bi bi-person-plus"></i> 注册新账号
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if session.get('user_id') %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">数据概览</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="stats-card">
+                                <div class="stats-card-body">
+                                    <div class="stats-card-icon" style="background: rgba(48, 201, 255, 0.1); color: #30c9ff;">
+                                        <i class="bi bi-newspaper"></i>
+                                    </div>
+                                    <div class="stats-card-content">
+                                        <h5 class="stats-card-title">热榜条目</h5>
+                                        <p class="stats-card-number">{{ articles|length }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="stats-card">
+                                <div class="stats-card-body">
+                                    <div class="stats-card-icon" style="background: rgba(51, 201, 149, 0.1); color: #33c995;">
+                                        <i class="bi bi-chat-dots"></i>
+                                    </div>
+                                    <div class="stats-card-content">
+                                        <h5 class="stats-card-title">总回答数</h5>
+                                        <p class="stats-card-number">{{ articles|sum(attribute='answer_count') }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="stats-card">
+                                <div class="stats-card-body">
+                                    <div class="stats-card-icon" style="background: rgba(255, 173, 51, 0.1); color: #ffad33;">
+                                        <i class="bi bi-fire"></i>
+                                    </div>
+                                    <div class="stats-card-content">
+                                        <h5 class="stats-card-title">最高热度</h5>
+                                        <p class="stats-card-number">{{ articles[0].hot_value if articles else '0' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="stats-card">
+                                <div class="stats-card-body">
+                                    <div class="stats-card-icon" style="background: rgba(245, 87, 105, 0.1); color: #f55769;">
+                                        <i class="bi bi-clock-history"></i>
+                                    </div>
+                                    <div class="stats-card-content">
+                                        <h5 class="stats-card-title">数据更新时间</h5>
+                                        <p class="stats-card-number">{{ articles[0].created_at.strftime('%Y-%m-%d %H:%M') if articles else '未知' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title">最新热榜话题</h5>
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-light text-dark me-2">
+                            <i class="bi bi-clock"></i> 更新时间: {{ articles[0].created_at.strftime('%Y-%m-%d %H:%M:%S') if articles else '未知' }}
+                        </span>
+                        <button id="refresh-data-inline" class="btn btn-sm btn-primary" title="刷新数据">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if articles %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>排名</th>
+                                    <th>标题</th>
+                                    <th>热度</th>
+                                    <th>回答数</th>
+                                    <th>简介</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for article in articles %}
+                                <tr>
+                                    <td>{{ article.rank }}</td>
+                                    <td>
+                                        <a href="{{ article.url }}" target="_blank">{{ article.title }}</a>
+                                    </td>
+                                    <td>{{ article.hot_value }}</td>
+                                    <td>{{ article.answer_count }}</td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 300px;" title="{{ article.description }}">
+                                            {{ article.description }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning custom-alert">
+                        <div class="alert-icon">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                        <div class="alert-content">
+                            暂无热榜数据，请点击"刷新热榜数据"按钮获取最新数据。
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- 未登录首页内容 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">平台功能介绍</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-4">
+                            <div class="feature-card text-center">
+                                <div class="feature-icon mb-3">
+                                    <i class="bi bi-fire text-danger" style="font-size: 3rem;"></i>
+                                </div>
+                                <h4>热词统计</h4>
+                                <p>分析热榜话题中的热门词汇，掌握当前社会热点关注度。</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="feature-card text-center">
+                                <div class="feature-icon mb-3">
+                                    <i class="bi bi-emoji-smile text-success" style="font-size: 3rem;"></i>
+                                </div>
+                                <h4>舆情分析</h4>
+                                <p>对热榜内容进行情感分析，了解社会舆论的整体情绪倾向。</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="feature-card text-center">
+                                <div class="feature-icon mb-3">
+                                    <i class="bi bi-bar-chart-line text-primary" style="font-size: 3rem;"></i>
+                                </div>
+                                <h4>文章统计</h4>
+                                <p>分析热榜文章的数据特征，包括热度、回答数等关键指标。</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="feature-card text-center">
+                                <div class="feature-icon mb-3">
+                                    <i class="bi bi-cloud text-info" style="font-size: 3rem;"></i>
+                                </div>
+                                <h4>词云图</h4>
+                                <p>通过词云直观展示热榜话题中的高频词汇和关键字。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">登录体验完整功能</h5>
+                </div>
+                <div class="card-body text-center">
+                    <p class="lead">注册并登录后，您将获得以下额外功能：</p>
+                    <div class="row justify-content-center">
+                        <div class="col-md-4 col-sm-6 mb-3">
+                            <div class="benefit-item text-center">
+                                <i class="bi bi-speedometer2 text-primary"></i>
+                                <h5>数据仪表盘</h5>
+                                <p>获取全面的数据分析和可视化展示</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-sm-6 mb-3">
+                            <div class="benefit-item text-center">
+                                <i class="bi bi-clock-history text-success"></i>
+                                <h5>历史数据对比</h5>
+                                <p>查看不同时间段的热榜数据变化</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-sm-6 mb-3">
+                            <div class="benefit-item text-center">
+                                <i class="bi bi-download text-info"></i>
+                                <h5>数据导出</h5>
+                                <p>将分析结果导出为多种格式</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-primary">
+                            <i class="bi bi-person-plus"></i> 立即注册
+                        </a>
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary ms-2">
+                            <i class="bi bi-box-arrow-in-right"></i> 登录账号
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .feature-card {
+        padding: 20px;
+        background-color: var(--card-bg);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    }
+    
+    .feature-card h4 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: var(--text-color);
+    }
+    
+    .feature-card p {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    
+    .benefit-item {
+        padding: 25px 15px;
+        background-color: var(--card-bg);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    .benefit-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    }
+    
+    .benefit-item i {
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+    }
+    
+    .benefit-item h5 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: var(--text-color);
+    }
+    
+    .benefit-item p {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // 定义刷新数据的函数
+        function refreshData($button, originalText) {
+            // 显示加载中提示
+            $button.html('<i class="fas fa-spinner fa-spin"></i> 刷新中...');
+            $button.prop('disabled', true);
+            
+            // 添加通知提示
+            const toastHtml = `
+                <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+                    <div id="refreshToast" class="toast align-items-center text-white bg-info" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                <i class="fas fa-info-circle me-2"></i> 正在获取最新知乎热榜数据...
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 如果页面上没有toast容器，就添加一个
+            if ($('#toastContainer').length === 0) {
+                $('body').append('<div id="toastContainer"></div>');
+            }
+            
+            // 添加toast到容器
+            $('#toastContainer').html(toastHtml);
+            
+            // 显示toast
+            var refreshToast = new bootstrap.Toast(document.getElementById('refreshToast'), {
+                delay: 2000
+            });
+            refreshToast.show();
+            
+            // 发送AJAX请求刷新数据
+            $.ajax({
+                url: "{{ url_for('main.refresh_hot_articles') }}",
+                method: "POST",
+                dataType: "json",
+                success: function(response) {
+                    if (response.status === "success") {
+                        // 创建成功toast
+                        const successToastHtml = `
+                            <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+                                <div id="successToast" class="toast align-items-center text-white bg-success" role="alert" aria-live="assertive" aria-atomic="true">
+                                    <div class="d-flex">
+                                        <div class="toast-body">
+                                            <i class="fas fa-check-circle me-2"></i> ${response.message}
+                                        </div>
+                                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        $('#toastContainer').html(successToastHtml);
+                        
+                        // 显示成功toast
+                        var successToast = new bootstrap.Toast(document.getElementById('successToast'), {
+                            delay: 2000
+                        });
+                        successToast.show();
+                        
+                        // 1秒后重新加载页面以显示新数据
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1000);
+                    } else {
+                        // 创建错误toast
+                        const errorToastHtml = `
+                            <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+                                <div id="errorToast" class="toast align-items-center text-white bg-danger" role="alert" aria-live="assertive" aria-atomic="true">
+                                    <div class="d-flex">
+                                        <div class="toast-body">
+                                            <i class="fas fa-times-circle me-2"></i> ${response.message || '数据刷新失败，请稍后再试。'}
+                                        </div>
+                                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        $('#toastContainer').html(errorToastHtml);
+                        
+                        // 显示错误toast
+                        var errorToast = new bootstrap.Toast(document.getElementById('errorToast'), {
+                            delay: 2000
+                        });
+                        errorToast.show();
+                        
+                        // 恢复按钮状态
+                        $button.html(originalText);
+                        $button.prop('disabled', false);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    // 创建错误toast
+                    const errorToastHtml = `
+                        <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+                            <div id="errorToast" class="toast align-items-center text-white bg-danger" role="alert" aria-live="assertive" aria-atomic="true">
+                                <div class="d-flex">
+                                    <div class="toast-body">
+                                        <i class="fas fa-times-circle me-2"></i> 数据刷新失败，请稍后再试。
+                                    </div>
+                                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    $('#toastContainer').html(errorToastHtml);
+                    
+                    // 显示错误toast
+                    var errorToast = new bootstrap.Toast(document.getElementById('errorToast'), {
+                        delay: 2000
+                    });
+                    errorToast.show();
+                    
+                    // 恢复按钮状态
+                    $button.html(originalText);
+                    $button.prop('disabled', false);
+                    
+                    console.error('刷新数据错误:', error);
+                }
+            });
+        }
+        
+        // 点击刷新按钮事件
+        $('#refresh-data-ajax, #refresh-data-inline').click(function() {
+            const originalText = $(this).html();
+            refreshData($(this), originalText);
+        });
+    });
+</script>
+{% endblock %} 

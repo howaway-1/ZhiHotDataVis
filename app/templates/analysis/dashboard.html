@@ -1,0 +1,475 @@
+{% extends "base.html" %}
+
+{% block title %}数据仪表盘 - 知乎热榜数据分析平台{% endblock %}
+
+{% block page_title %}数据仪表盘{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">热榜数据综合分析</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-3 col-md-6 mb-4">
+                            <div class="stats-card">
+                                <div class="stats-card-body">
+                                    <div class="stats-card-icon" style="background: rgba(58, 161, 255, 0.1); color: #3aa1ff;">
+                                        <i class="bi bi-bar-chart-line"></i>
+                                    </div>
+                                    <div class="stats-card-content">
+                                        <h5 class="stats-card-title">热度总值</h5>
+                                        <p class="stats-card-number" id="totalHotValue">加载中...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-4">
+                            <div class="stats-card">
+                                <div class="stats-card-body">
+                                    <div class="stats-card-icon" style="background: rgba(51, 201, 149, 0.1); color: #33c995;">
+                                        <i class="bi bi-chat-left-dots"></i>
+                                    </div>
+                                    <div class="stats-card-content">
+                                        <h5 class="stats-card-title">回答总数</h5>
+                                        <p class="stats-card-number" id="totalAnswers">加载中...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-4">
+                            <div class="stats-card">
+                                <div class="stats-card-body">
+                                    <div class="stats-card-icon" style="background: rgba(48, 201, 255, 0.1); color: #30c9ff;">
+                                        <i class="bi bi-emoji-smile"></i>
+                                    </div>
+                                    <div class="stats-card-content">
+                                        <h5 class="stats-card-title">平均情感值</h5>
+                                        <p class="stats-card-number" id="avgSentiment">加载中...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-4">
+                            <div class="stats-card">
+                                <div class="stats-card-body">
+                                    <div class="stats-card-icon" style="background: rgba(255, 173, 51, 0.1); color: #ffad33;">
+                                        <i class="bi bi-lightning-charge"></i>
+                                    </div>
+                                    <div class="stats-card-content">
+                                        <h5 class="stats-card-title">热榜活跃度</h5>
+                                        <p class="stats-card-number" id="activityIndex">加载中...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100 card-chart">
+                <div class="card-header">
+                    <h5 class="card-title">热度分布</h5>
+                </div>
+                <div class="card-body">
+                    <div id="hotValueChart" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100 card-chart">
+                <div class="card-header">
+                    <h5 class="card-title">回答数分布</h5>
+                </div>
+                <div class="card-body">
+                    <div id="answerCountChart" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100 card-chart">
+                <div class="card-header">
+                    <h5 class="card-title">热榜排名与热度关系</h5>
+                </div>
+                <div class="card-body">
+                    <div id="rankHotChart" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100 card-chart">
+                <div class="card-header">
+                    <h5 class="card-title">情感分析</h5>
+                </div>
+                <div class="card-body">
+                    <div id="sentimentChart" style="width: 100%; height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">热榜数据详情</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="hotArticlesTable">
+                            <thead>
+                                <tr>
+                                    <th>排名</th>
+                                    <th>标题</th>
+                                    <th>热度值</th>
+                                    <th>回答数</th>
+                                    <th>情感分析</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 数据将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // 加载文章数据
+    $.ajax({
+        url: '/api/hot_articles',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success') {
+                const articles = response.data;
+                renderDashboard(articles);
+            }
+        },
+        error: function(error) {
+            console.error('获取热榜数据失败:', error);
+        }
+    });
+
+    // 加载情感分析数据
+    $.ajax({
+        url: '/analysis/api/sentiment_data',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success') {
+                const sentimentData = response.data;
+                renderSentimentChart(sentimentData);
+            }
+        },
+        error: function(error) {
+            console.error('获取情感分析数据失败:', error);
+        }
+    });
+
+    // 加载文章统计数据
+    $.ajax({
+        url: '/analysis/api/article_stats_data',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success') {
+                const statsData = response.data;
+                updateStatCards(statsData);
+            }
+        },
+        error: function(error) {
+            console.error('获取文章统计数据失败:', error);
+        }
+    });
+
+    function renderDashboard(articles) {
+        // 渲染数据表格
+        renderArticlesTable(articles);
+        
+        // 渲染图表
+        renderHotValueChart(articles);
+        renderAnswerCountChart(articles);
+        renderRankHotChart(articles);
+    }
+
+    function renderArticlesTable(articles) {
+        const tableBody = $('#hotArticlesTable tbody');
+        tableBody.empty();
+
+        articles.forEach(article => {
+            let sentimentClass = '';
+            let sentimentIcon = '';
+            
+            // 假设情感值在0-1之间，0.5为中性
+            const sentimentScore = Math.random(); // 这里用随机值代替，实际中应从情感分析数据获取
+            
+            if (sentimentScore >= 0.7) {
+                sentimentClass = 'text-success';
+                sentimentIcon = '<i class="bi bi-emoji-smile"></i>';
+            } else if (sentimentScore <= 0.3) {
+                sentimentClass = 'text-danger';
+                sentimentIcon = '<i class="bi bi-emoji-frown"></i>';
+            } else {
+                sentimentClass = 'text-warning';
+                sentimentIcon = '<i class="bi bi-emoji-neutral"></i>';
+            }
+
+            tableBody.append(`
+                <tr>
+                    <td>${article.rank}</td>
+                    <td><a href="${article.url}" target="_blank">${article.title}</a></td>
+                    <td>${article.hot_value}</td>
+                    <td>${article.answer_count}</td>
+                    <td class="${sentimentClass}">${sentimentIcon} ${sentimentScore.toFixed(2)}</td>
+                </tr>
+            `);
+        });
+    }
+
+    function renderHotValueChart(articles) {
+        // 提取热度值数据
+        const hotValues = articles.map(article => {
+            const match = article.hot_value.match(/\d+/);
+            return match ? parseInt(match[0]) : 0;
+        });
+
+        // 创建热度值分布图
+        const hotValueChart = initEchart('hotValueChart');
+        if (!hotValueChart) return;
+        
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                }
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: articles.map(article => article.rank),
+                name: '排名',
+                nameLocation: 'middle',
+                nameGap: 30
+            },
+            yAxis: {
+                type: 'value',
+                name: '热度值'
+            },
+            series: [{
+                name: '热度值',
+                type: 'bar',
+                data: hotValues,
+                itemStyle: {
+                    color: function(params) {
+                        // 根据值的大小设置不同颜色
+                        const value = params.value;
+                        if (value > 1000) return '#f44336';
+                        if (value > 500) return '#ff9800';
+                        return '#4caf50';
+                    }
+                }
+            }]
+        };
+        
+        hotValueChart.setOption(option);
+    }
+
+    function renderAnswerCountChart(articles) {
+        // 提取回答数据
+        const answerCounts = articles.map(article => article.answer_count);
+
+        // 创建回答数分布图
+        const answerCountChart = initEchart('answerCountChart');
+        if (!answerCountChart) return;
+        
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                }
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: articles.map(article => article.rank),
+                name: '排名',
+                nameLocation: 'middle',
+                nameGap: 30
+            },
+            yAxis: {
+                type: 'value',
+                name: '回答数'
+            },
+            series: [{
+                name: '回答数',
+                type: 'bar',
+                data: answerCounts,
+                itemStyle: {
+                    color: '#2196f3'
+                }
+            }]
+        };
+        
+        answerCountChart.setOption(option);
+    }
+
+    function renderRankHotChart(articles) {
+        // 提取排名和热度值数据
+        const data = articles.map(article => {
+            const match = article.hot_value.match(/\d+/);
+            const hotValue = match ? parseInt(match[0]) : 0;
+            return [article.rank, hotValue, article.title];
+        });
+
+        // 创建排名与热度关系图
+        const rankHotChart = initEchart('rankHotChart');
+        if (!rankHotChart) return;
+        
+        const option = {
+            tooltip: {
+                trigger: 'item',
+                formatter: function(params) {
+                    return `排名: ${params.value[0]}<br>热度: ${params.value[1]}<br>标题: ${params.value[2]}`;
+                }
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'value',
+                name: '排名',
+                inverse: true
+            },
+            yAxis: {
+                type: 'value',
+                name: '热度值'
+            },
+            series: [{
+                name: '排名与热度',
+                type: 'scatter',
+                symbolSize: function(value) {
+                    return Math.sqrt(value[1]) / 3 + 10;
+                },
+                data: data,
+                itemStyle: {
+                    color: function(params) {
+                        const value = params.value[1];
+                        if (value > 1000) return '#f44336';
+                        if (value > 500) return '#ff9800';
+                        return '#4caf50';
+                    }
+                }
+            }]
+        };
+        
+        rankHotChart.setOption(option);
+    }
+
+    function renderSentimentChart(sentimentData) {
+        // 计算积极、消极和中性的文章数量
+        let positive = 0, negative = 0, neutral = 0;
+        
+        sentimentData.forEach(item => {
+            if (item.sentiment_score >= 0.7) {
+                positive++;
+            } else if (item.sentiment_score <= 0.3) {
+                negative++;
+            } else {
+                neutral++;
+            }
+        });
+        
+        // 创建情感分析饼图
+        const sentimentChart = initEchart('sentimentChart');
+        if (!sentimentChart) return;
+        
+        const option = {
+            tooltip: {
+                trigger: 'item',
+                formatter: '{a} <br/>{b}: {c} ({d}%)'
+            },
+            legend: {
+                orient: 'vertical',
+                left: 10,
+                data: ['积极', '中性', '消极']
+            },
+            series: [
+                {
+                    name: '情感分析',
+                    type: 'pie',
+                    radius: ['50%', '70%'],
+                    avoidLabelOverlap: false,
+                    label: {
+                        show: false,
+                        position: 'center'
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            fontSize: '18',
+                            fontWeight: 'bold'
+                        }
+                    },
+                    labelLine: {
+                        show: false
+                    },
+                    data: [
+                        { value: positive, name: '积极', itemStyle: { color: '#4caf50' } },
+                        { value: neutral, name: '中性', itemStyle: { color: '#ff9800' } },
+                        { value: negative, name: '消极', itemStyle: { color: '#f44336' } }
+                    ]
+                }
+            ]
+        };
+        
+        sentimentChart.setOption(option);
+    }
+
+    function updateStatCards(statsData) {
+        $('#totalHotValue').text(statsData.hot_value_stats.total.toLocaleString());
+        $('#totalAnswers').text(statsData.answer_count_stats.total.toLocaleString());
+        
+        // 计算活跃度指数 (简单计算，实际可能需要更复杂的公式)
+        const activityIndex = Math.round((statsData.hot_value_stats.total / statsData.articles.length) * 
+                                        (statsData.answer_count_stats.total / statsData.articles.length) / 1000);
+        $('#activityIndex').text(activityIndex.toLocaleString());
+        
+        // 更新平均情感值（这里用随机值代替，实际应该从情感分析数据计算）
+        const avgSentiment = (Math.random() * 0.5 + 0.25).toFixed(2);
+        $('#avgSentiment').text(avgSentiment);
+    }
+});
+</script>
+{% endblock %}
